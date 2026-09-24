@@ -1,0 +1,52 @@
+name: AI Agency Command
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+
+jobs:
+  agency:
+    if: startsWith(github.event.comment.body, '@agency')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Read Agency Command
+        env:
+          COMMAND: ${{ github.event.comment.body }}
+        run: |
+          echo "Agency command received:"
+          echo "$COMMAND"
+
+      - name: Create Agency Response
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const command = context.payload.comment.body;
+
+            const response = `
+            ## 🤖 AI Automation Agency
+
+            **Command received:**  
+            ${command}
+
+            ### 📋 Task Analysis
+            - Client requirement identified
+            - Automation workflow requested
+            - Client communication required
+            - Proposal/deliverables will be prepared
+
+            ### 🚧 Status
+            **Agency automation triggered successfully.**
+
+            Next stage: AI-powered workflow generation.
+            `;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: response
+            });
