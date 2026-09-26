@@ -18,10 +18,10 @@ jobs:
         env:
           COMMAND: ${{ github.event.comment.body }}
         run: |
-          echo "Agency command received:"
+          echo "AI Agency command received:"
           echo "$COMMAND"
 
-      - name: Generate Agency Deliverables
+      - name: Create Real Agency Deliverables
         uses: actions/github-script@v7
         with:
           script: |
@@ -35,15 +35,20 @@ jobs:
             let automation = "Business Process Automation";
             let channel = "WhatsApp / Email";
 
-            if (text.includes("gym")) {
+            if (text.includes("gym") || text.includes("fitness")) {
               business = "Gym / Fitness Business";
             } else if (text.includes("real estate") || text.includes("property")) {
               business = "Real Estate Business";
-            } else if (text.includes("salon")) {
+            } else if (text.includes("salon") || text.includes("beauty")) {
               business = "Salon / Beauty Business";
-            } else if (text.includes("restaurant")) {
-              business = "Restaurant Business";
-            } else if (text.includes("ecommerce") || text.includes("shop") || text.includes("store")) {
+            } else if (text.includes("restaurant") || text.includes("hotel")) {
+              business = "Restaurant / Hospitality Business";
+            } else if (
+              text.includes("ecommerce") ||
+              text.includes("e-commerce") ||
+              text.includes("shop") ||
+              text.includes("store")
+            ) {
               business = "E-commerce Business";
             }
 
@@ -53,17 +58,26 @@ jobs:
               channel = "Email";
             } else if (text.includes("instagram")) {
               channel = "Instagram";
+            } else if (text.includes("telegram")) {
+              channel = "Telegram";
             }
 
             if (text.includes("lead")) {
               automation = "Lead Generation & Follow-up Automation";
-            } else if (text.includes("appointment") || text.includes("booking")) {
+            } else if (
+              text.includes("appointment") ||
+              text.includes("booking")
+            ) {
               automation = "Appointment Booking Automation";
             } else if (text.includes("follow")) {
               automation = "Customer Follow-up Automation";
             } else if (text.includes("support")) {
               automation = "Customer Support Automation";
+            } else if (text.includes("sales")) {
+              automation = "Sales Automation";
             }
+
+            const basePath = `deliverables/issue-${issueNumber}`;
 
             const proposal = `# Client Proposal
 
@@ -73,37 +87,33 @@ ${business}
 ## Client Request
 ${request}
 
-## Proposed Automation
+## Automation
 ${automation}
 
 ## Communication Channel
 ${channel}
 
-## Workflow
+## Objective
 
-1. Customer submits a request or lead.
-2. System captures the customer information.
-3. Automation checks the request.
-4. Customer receives an automatic response.
-5. Lead/customer information is stored.
-6. Follow-up message is sent automatically.
-7. Team receives a notification when human action is required.
+Build a repeatable automation system for the client's business.
+
+## Proposed Solution
+
+1. Capture customer/lead information.
+2. Process the incoming request.
+3. Apply business rules.
+4. Send an automated response.
+5. Store customer information.
+6. Trigger follow-up actions.
+7. Notify the business team when human action is required.
 
 ## Expected Benefits
 
-- Faster customer response
-- Less manual work
-- Better lead follow-up
-- Organized customer information
-- Repeatable business process
-
-## Implementation
-
-The workflow can be connected to the client's existing tools and business process.
-
-## Next Step
-
-Confirm the exact tools, messages and business rules before deployment.
+- Faster response time
+- Reduced manual work
+- Better lead management
+- Consistent customer communication
+- Organized business data
 `;
 
             const workflow = `# Automation Workflow
@@ -117,7 +127,7 @@ ${automation}
 ## Channel
 ${channel}
 
-### Flow
+## Flow
 
 Customer
   ↓
@@ -125,82 +135,217 @@ Incoming Request
   ↓
 Data Capture
   ↓
-Automation Logic
+Validation
+  ↓
+Automation Rules
   ↓
 Automatic Response
   ↓
-Database / CRM
+CRM / Database
   ↓
 Follow-up
   ↓
 Human Notification
 
-## Required Inputs
+## Required Data
 
 - Customer name
-- Contact information
+- Phone number
+- Email
 - Customer request
-- Date/time when applicable
+- Date/time
+- Lead status
 - Follow-up status
 
-## Automation Rules
+## Rules
 
-IF a new customer request is received:
+IF a new request arrives
 → capture customer information
 
-IF the request is valid:
+IF the request is valid
 → send automatic response
 
-IF follow-up is required:
-→ schedule follow-up
+IF follow-up is required
+→ create follow-up task
 
-IF human assistance is required:
-→ notify the business team
+IF human assistance is required
+→ notify business team
 `;
 
             const clientMessage = `# Client Message
 
-Hi,
+Hello,
 
-We received your automation requirement.
+We reviewed your requirement for:
 
-### Requirement
-${request}
+**${business}**
 
-### Proposed Solution
-We can build a ${automation.toLowerCase()} for your ${business.toLowerCase()} using ${channel}.
+Requested automation:
 
-The system can help reduce repetitive manual work, respond faster to customers and organize follow-ups.
+**${automation}**
 
-We can first create the workflow and test it before deployment.
+Communication channel:
 
-Thank you,
-AI Automation Agency
+**${channel}**
+
+We have prepared the initial automation workflow and implementation plan.
+
+The next step is to connect the required business accounts, APIs and tools for deployment.
+
+Thank you.
 `;
 
-            const implementation = `# Implementation Guide
-
-## Project
-${automation}
+            const implementationGuide = `# Implementation Guide
 
 ## Business
 ${business}
 
-### Phase 1 — Requirement
-Collect the client's exact business process.
+## Automation
+${automation}
 
-### Phase 2 — Workflow
-Map the trigger, actions, conditions and final outcome.
+## Channel
+${channel}
 
-### Phase 3 — Integration
-Connect the required business tools.
+## Deployment Steps
 
-### Phase 4 — Testing
-Test normal requests, incorrect requests and edge cases.
+### 1. Collect Business Information
+- Business name
+- Contact details
+- Working hours
+- Customer journey
+- Follow-up rules
 
-### Phase 5 — Deployment
-Activate the automation after client approval.
+### 2. Configure Communication
+Connect the required communication platform.
 
-### Phase 6 — Monitoring
-Check automation results and fix failures when required.
+### 3. Configure Data Storage
+Connect CRM, database or Google Sheets.
+
+### 4. Configure Automation
+Create triggers, conditions and actions.
+
+### 5. Configure Follow-up
+Define timing and follow-up rules.
+
+### 6. Test
+Test the complete workflow with sample customer data.
+
+### 7. Deploy
+Enable the workflow for real customer traffic.
+
+### 8. Monitor
+Review errors, delivery status and automation performance.
 `;
+
+            const automationConfig = {
+              agency: "AI Automation Agency",
+              issue: issueNumber,
+              request: request,
+              business: business,
+              automation: automation,
+              channel: channel,
+              status: "READY_FOR_INTEGRATION",
+              deliverables: [
+                "client-proposal.md",
+                "automation-workflow.md",
+                "client-message.md",
+                "implementation-guide.md",
+                "automation.json"
+              ]
+            };
+
+            async function upsertFile(path, content) {
+              let sha;
+
+              try {
+                const existing = await github.rest.repos.getContent({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  path: path,
+                  ref: context.sha
+                });
+
+                if (!Array.isArray(existing.data)) {
+                  sha = existing.data.sha;
+                }
+              } catch (error) {
+                if (error.status !== 404) {
+                  throw error;
+                }
+              }
+
+              const params = {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                path: path,
+                message: `Create agency deliverable: issue #${issueNumber}`,
+                content: Buffer.from(content, "utf8").toString("base64"),
+                branch: context.payload.repository.default_branch
+              };
+
+              if (sha) {
+                params.sha = sha;
+              }
+
+              await github.rest.repos.createOrUpdateFileContents(params);
+            }
+
+            await upsertFile(
+              `${basePath}/client-proposal.md`,
+              proposal
+            );
+
+            await upsertFile(
+              `${basePath}/automation-workflow.md`,
+              workflow
+            );
+
+            await upsertFile(
+              `${basePath}/client-message.md`,
+              clientMessage
+            );
+
+            await upsertFile(
+              `${basePath}/implementation-guide.md`,
+              implementationGuide
+            );
+
+            await upsertFile(
+              `${basePath}/automation.json`,
+              JSON.stringify(automationConfig, null, 2)
+            );
+
+            const response = `## 🤖 AI Automation Agency
+
+**Business:** ${business}
+
+**Automation:** ${automation}
+
+**Channel:** ${channel}
+
+### Deliverables Created
+
+✅ Client Proposal  
+✅ Automation Workflow  
+✅ Client Message  
+✅ Implementation Guide  
+✅ Automation Configuration
+
+### Location
+
+\`${basePath}/\`
+
+### Status
+
+🟢 **READY FOR INTEGRATION**
+
+The automation plan has been generated and saved in the repository.
+
+Next stage: connect the required external APIs and business tools for real deployment.`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: response
+            });
