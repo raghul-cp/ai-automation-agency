@@ -6,6 +6,7 @@ on:
 
 permissions:
   issues: write
+  contents: write
 
 jobs:
   agency:
@@ -20,33 +21,186 @@ jobs:
           echo "Agency command received:"
           echo "$COMMAND"
 
-      - name: Create Agency Response
+      - name: Generate Agency Deliverables
         uses: actions/github-script@v7
         with:
           script: |
-            const command = context.payload.comment.body;
+            const command = context.payload.comment.body.trim();
+            const request = command.replace(/^@agency\s*/i, '').trim();
+            const issueNumber = context.issue.number;
 
-            const response = `
-            ## 🤖 AI Automation Agency
+            const text = request.toLowerCase();
 
-            **Command received:**  
-            ${command}
+            let business = "General Business";
+            let automation = "Business Process Automation";
+            let channel = "WhatsApp / Email";
 
-            ### 📋 Task Analysis
-            - Client requirement identified
-            - Automation workflow requested
-            - Client communication required
-            - Proposal/deliverables will be prepared
+            if (text.includes("gym")) {
+              business = "Gym / Fitness Business";
+            } else if (text.includes("real estate") || text.includes("property")) {
+              business = "Real Estate Business";
+            } else if (text.includes("salon")) {
+              business = "Salon / Beauty Business";
+            } else if (text.includes("restaurant")) {
+              business = "Restaurant Business";
+            } else if (text.includes("ecommerce") || text.includes("shop") || text.includes("store")) {
+              business = "E-commerce Business";
+            }
 
-            ### 🚧 Status
-            **Agency automation triggered successfully.**
+            if (text.includes("whatsapp")) {
+              channel = "WhatsApp";
+            } else if (text.includes("email")) {
+              channel = "Email";
+            } else if (text.includes("instagram")) {
+              channel = "Instagram";
+            }
 
-            Next stage: AI-powered workflow generation.
-            `;
+            if (text.includes("lead")) {
+              automation = "Lead Generation & Follow-up Automation";
+            } else if (text.includes("appointment") || text.includes("booking")) {
+              automation = "Appointment Booking Automation";
+            } else if (text.includes("follow")) {
+              automation = "Customer Follow-up Automation";
+            } else if (text.includes("support")) {
+              automation = "Customer Support Automation";
+            }
 
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: response
-            });
+            const proposal = `# Client Proposal
+
+## Business
+${business}
+
+## Client Request
+${request}
+
+## Proposed Automation
+${automation}
+
+## Communication Channel
+${channel}
+
+## Workflow
+
+1. Customer submits a request or lead.
+2. System captures the customer information.
+3. Automation checks the request.
+4. Customer receives an automatic response.
+5. Lead/customer information is stored.
+6. Follow-up message is sent automatically.
+7. Team receives a notification when human action is required.
+
+## Expected Benefits
+
+- Faster customer response
+- Less manual work
+- Better lead follow-up
+- Organized customer information
+- Repeatable business process
+
+## Implementation
+
+The workflow can be connected to the client's existing tools and business process.
+
+## Next Step
+
+Confirm the exact tools, messages and business rules before deployment.
+`;
+
+            const workflow = `# Automation Workflow
+
+## Business
+${business}
+
+## Automation
+${automation}
+
+## Channel
+${channel}
+
+### Flow
+
+Customer
+  ↓
+Incoming Request
+  ↓
+Data Capture
+  ↓
+Automation Logic
+  ↓
+Automatic Response
+  ↓
+Database / CRM
+  ↓
+Follow-up
+  ↓
+Human Notification
+
+## Required Inputs
+
+- Customer name
+- Contact information
+- Customer request
+- Date/time when applicable
+- Follow-up status
+
+## Automation Rules
+
+IF a new customer request is received:
+→ capture customer information
+
+IF the request is valid:
+→ send automatic response
+
+IF follow-up is required:
+→ schedule follow-up
+
+IF human assistance is required:
+→ notify the business team
+`;
+
+            const clientMessage = `# Client Message
+
+Hi,
+
+We received your automation requirement.
+
+### Requirement
+${request}
+
+### Proposed Solution
+We can build a ${automation.toLowerCase()} for your ${business.toLowerCase()} using ${channel}.
+
+The system can help reduce repetitive manual work, respond faster to customers and organize follow-ups.
+
+We can first create the workflow and test it before deployment.
+
+Thank you,
+AI Automation Agency
+`;
+
+            const implementation = `# Implementation Guide
+
+## Project
+${automation}
+
+## Business
+${business}
+
+### Phase 1 — Requirement
+Collect the client's exact business process.
+
+### Phase 2 — Workflow
+Map the trigger, actions, conditions and final outcome.
+
+### Phase 3 — Integration
+Connect the required business tools.
+
+### Phase 4 — Testing
+Test normal requests, incorrect requests and edge cases.
+
+### Phase 5 — Deployment
+Activate the automation after client approval.
+
+### Phase 6 — Monitoring
+Check automation results and fix failures when required.
+`;
