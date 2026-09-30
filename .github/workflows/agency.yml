@@ -2,8 +2,7 @@ name: AI Agency Command
 
 on:
   issue_comment:
-    types:
-      - created
+    types: [created]
 
 permissions:
   contents: write
@@ -11,16 +10,16 @@ permissions:
 
 jobs:
   agency:
-    if: ${{ startsWith(github.event.comment.body, '@agency') }}
+    if: startsWith(github.event.comment.body, '@agency')
     runs-on: ubuntu-latest
 
     steps:
-      - name: Read Agency Command
+      - name: Read command
         run: |
           echo "AI Agency command received:"
           echo "${{ github.event.comment.body }}"
 
-      - name: Generate Agency Deliverables
+      - name: Generate agency output
         uses: actions/github-script@v7
         with:
           script: |
@@ -29,58 +28,42 @@ jobs:
             const issueNumber = context.issue.number;
 
             let business = "General Business";
-            let automation = "Business Process Automation";
+            let automation = "Business Automation";
 
-            const text = request.toLowerCase();
-
-            if (text.includes("gym") || text.includes("fitness")) {
+            if (/gym|fitness/i.test(request)) {
               business = "Gym / Fitness Business";
             }
 
-            if (text.includes("lead")) {
-              automation = "Lead Generation & Follow-up Automation";
+            if (/lead/i.test(request)) {
+              automation = "Lead Generation Automation";
             }
 
-            const basePath = `deliverables/issue-${issueNumber}`;
+            const path = `deliverables/issue-${issueNumber}`;
 
-            const proposal = `# Client Proposal
+            const files = {
+              "client-proposal.md": `# Client Proposal
 
-## Business
-${business}
+Business: ${business}
 
-## Client Request
+Client Request:
 ${request}
 
-## Automation
+Automation:
 ${automation}
 
 ## Objective
 Create an automated lead generation system for the client.
+`,
 
-## Proposed Solution
+              "automation-workflow.md": `# Automation Workflow
 
-1. Capture new customer information.
-2. Store lead information.
-3. Send an automatic response.
-4. Follow up with the lead.
-5. Notify the business team when required.
-`;
-
-            const workflow = `# Automation Workflow
-
-## Business
 ${business}
 
-## Automation
 ${automation}
-
-## Flow
 
 Customer
 ↓
 Lead Capture
-↓
-Data Validation
 ↓
 Lead Storage
 ↓
@@ -89,37 +72,22 @@ Automatic Response
 Follow-up
 ↓
 Business Notification
+`,
 
-## Required Data
-
-- Customer name
-- Phone number
-- Email
-- Lead source
-- Lead status
-- Follow-up status
-`;
-
-            const clientMessage = `# Client Message
+              "client-message.md": `# Client Message
 
 Hello,
 
-We reviewed your requirement for:
+We received your requirement:
 
-**${business}**
+${request}
 
-Requested automation:
-
-**${automation}**
-
-We have prepared the initial automation workflow and implementation plan.
-
-The next step is to connect the required business accounts, APIs and tools.
+We have prepared the initial automation plan.
 
 Thank you.
-`;
+`,
 
-            const implementationGuide = `# Implementation Guide
+              "implementation-guide.md": `# Implementation Guide
 
 ## Business
 ${business}
@@ -129,43 +97,84 @@ ${automation}
 
 ## Steps
 
-### 1. Collect Business Information
-- Business name
-- Contact details
-- Working hours
-- Lead sources
+1. Collect customer information.
+2. Capture leads.
+3. Store leads.
+4. Send automatic response.
+5. Follow up with leads.
+6. Notify the business.
+7. Test the workflow.
+8. Deploy the automation.
+`,
 
-### 2. Connect Lead Source
-Connect the required form, website or social media source.
+              "automation.json": JSON.stringify({
+                agency: "AI Automation Agency",
+                issue: issueNumber,
+                request: request,
+                business: business,
+                automation: automation,
+                status: "READY_FOR_INTEGRATION"
+              }, null, 2)
+            };
 
-### 3. Store Leads
-Connect CRM, database or Google Sheets.
+            for (const [filename, content] of Object.entries(files)) {
+              const filePath = `${path}/${filename}`;
+              let sha;
 
-### 4. Configure Automation
-Create triggers and actions.
+              try {
+                const existing = await github.rest.repos.getContent({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  path: filePath,
+                  ref: context.payload.repository.default_branch
+                });
 
-### 5. Configure Follow-up
-Create automatic follow-up messages.
+                if (!Array.isArray(existing.data)) {
+                  sha = existing.data.sha;
+                }
+              } catch (error) {
+                if (error.status !== 404) {
+                  throw error;
+                }
+              }
 
-### 6. Test
-Test the workflow using sample leads.
+              const data = {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                path: filePath,
+                message: `AI Agency: create ${filename}`,
+                content: Buffer.from(content).toString("base64"),
+                branch: context.payload.repository.default_branch
+              };
 
-### 7. Deploy
-Enable the automation for real customers.
+              if (sha) {
+                data.sha = sha;
+              }
 
-### 8. Monitor
-Check errors and automation performance.
-`;
+              await github.rest.repos.createOrUpdateFileContents(data);
+            }
 
-            const automationConfig = {
-              agency: "AI Automation Agency",
-              issue: issueNumber,
-              request: request,
-              business: business,
-              automation: automation,
-              status: "READY_FOR_INTEGRATION",
-              deliverables: [
-                "client-proposal.md",
-                "automation-workflow.md",
-                "client-message.md",
-                "implementation-guide
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: `## 🤖 AI Agency
+
+✅ Command received
+
+**Business:** ${business}
+
+**Automation:** ${automation}
+
+### Created
+- ✅ Client Proposal
+- ✅ Automation Workflow
+- ✅ Client Message
+- ✅ Implementation Guide
+- ✅ Automation JSON
+
+📁 Files created in:
+\`${path}/\`
+
+🟢 **Status: READY FOR INTEGRATION**`
+            });
