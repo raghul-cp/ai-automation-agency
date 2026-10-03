@@ -100,4 +100,4 @@ jobs:
           git config user.email "actions@github.com"
           git add deliverables/agency-report.md
           git commit -m "Generate agency report" || echo "Nothing to commit"
-         git push
+          git push
