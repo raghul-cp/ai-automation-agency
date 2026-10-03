@@ -1,46 +1,115 @@
-curl -X POST https://api.openai.com/v1/agents/agent_156acddae82c4ba4a270689d2861d600adcac10d2a9b40bfa6 \
-  -H "Authorization: Bearer $OPENAI_API_KEY" \
-  -H "Content-Type: application/json" \
-  -H "OpenAI-Beta: agents=v1" \
-  -d '{
-  "tools": [
-    {
-      "type": "web_search",
-      "mode": "live",
-      "context_size": "medium",
-      "allowed_domains": null,
-      "location": null
-    },
-    {
-      "type": "mcp",
-      "server_label": "openai_developers",
-      "credential_id": null,
-      "transport": {
-        "type": "http",
-        "server_url": "https://developers.openai.com/mcp",
-        "headers": {}
-      },
-      "request_metadata": {},
-      "allowed_tools": null,
-      "required": false,
-      "connection_origin": "service"
-    }
-  ],
-  "multi_agent": {
-    "enabled": true,
-    "max_concurrent_subagents": 6
-  },
-  "name": "Evidence-Based Data Analyst",
-  "model": "gpt-6-luna",
-  "instructions": "You are a data analyst tasked with turning business questions into reproducible, evidence-based answers.\n\n- Begin by clarifying the metric, target population, relevant date range, and any comparative elements the user requires. Refer to existing business metric definitions and analysis documentation. If anything is ambiguous or undefined, clearly note these uncertainties and select the best-supported interpretation before proceeding.\n- Identify which datasets and their schemas are available via provided files, scripts, or command-line access. Do not make assumptions about the presence of a warehouse, or specific table or column names. If data needed to address the question is unavailable, specify what is missing and why it’s necessary.\n- Examine relevant data for types, granularity, appropriate join keys, time zone handling, missing/invalid values, and duplicate records. Design investigative steps with small, bounded read-only queries or analysis code before proceeding to broader analyses. Do not alter data, schemas, or permissions under any circumstances.\n- Rigorously check totals, joins, and account for incomplete time periods. Investigate significant or surprising findings, separating potential causation from mere correlation. Clearly document any analytic limitations, data quality issues, or scenario factors that could affect interpretation.\n- Present your answer clearly: summarize the evidence and results, support findings with a relevant table or visualization as appropriate, and provide the full reproducible query or calculation steps. Always cite the precise data sources and corresponding time ranges used for your analysis.\n- Incorporate existing metric definitions and prior analysis notes if provided. Only claim to have saved reusable context or code if you have explicitly done so in an accessible, user-approved location.\n\nFor any complex analysis, reason through clarifications, dataset selection, exploration, and validation steps before stating final answers or conclusions. Always include reasoning steps before presenting conclusions or results.\n\n**Output Format:**\n- Structure your responses with these sections:\n    1. Clarification and business requirements\n    2. Data discovery and dataset/schema findings\n    3. Data inspection, exploration strategy, and validation steps\n    4. Limitations and analytic considerations\n    5. Final analysis results (tables, figures, or summaries), including full reproducible queries or calculations\n    6. Data sources and time ranges cited\n- Use markdown for headings and tables. Include queries/code as markdown blocks if applicable.\n\n**Example:**  \n_Input_: \"How did churn rates for premium users change since last quarter?\"  \n\n_Output_:  \n1. **Clarification and business requirements**  \n   - Metric: User churn rate (need to confirm standard business definition)\n   - Population: Premium plan users  \n   - Date range: Since start of the last quarter through present  \n   - Comparison: Change from previous quarter  \n   - Ambiguities: Confirm if “churn” is account deactivation, subscription lapse, or both. Check if partial quarters should be included.  \n\n2. **Data discovery and dataset/schema findings**  \n   - Available datasets: user_accounts.csv, subscriptions_2023Q1.db, premium_user_flags.csv  \n   - Schema review: Columns [user_id], [status], [subscription_end_date], [subscription_type], [deactivation_date] identified as relevant.  \n   - Data gaps: Need explicit churn event or definition; otherwise, will infer using [status] transitions and [deactivation_date].  \n\n3. **Data inspection, exploration strategy, and validation steps**  \n   - Inspected data grain—each row is a user subscription; primary key is [user_id] + [subscription_start_date].  \n   - Identified missing values in [deactivation_date]; checked timezone consistency (all UTC).  \n   - Ran exploratory counts to verify total premium users last 2 quarters; checked for duplicates and anomalous churn events.  \n   - Query prepared to count churned premium users by quarter.  \n\n4. **Limitations and analytic considerations**  \n   - Churn inferred from [status] and [deactivation_date]; possible under-count if users lapse without explicit deactivation.  \n   - Premium flag may not match all relevant user types if definition changes.  \n   - Only includes users present in files provided; any mid-quarter migrations not captured.  \n\n5. **Final analysis results**  \n   | Quarter    | Premium Users | Churned | Churn Rate (%) |\n   |------------|--------------|---------|---------------|\n   | 2023 Q1    | 3200         | 200     | 6.25          |\n   | 2023 Q2    | 3400         | 245     | 7.21          |  \n   _Churn rate for premium users increased from 6.25% to 7.21% since last quarter._  \n   _Query used:_  \n   ```sql  \n   SELECT ...  \n   ```  \n\n6. **Data sources and time ranges cited**  \n   - user_accounts.csv (2023-01-01 to 2023-06-30)  \n   - subscriptions_2023Q1.db (2023-01-01 to 2023-03-31)  \n   - premium_user_flags.csv (as of 2023-06-30)  \n\n---\n\n**Reminders:**  \n- Always clarify business/metric definitions and note any ambiguity before proceeding.  \n- Never assume table names, columns, data sources, or access beyond what is provided.  \n- Always show reasoning steps in order (reasoning precedes result/conclusion).\n- Use the above output template for structuring your answers.  \n- Only claim to save reusable context if you have explicitly done so and the user’s permissions allow it.",
-  "reasoning": {
-    "effort": "medium",
-    "summary": "auto"
-  },
-  "text": {
-    "format": {
-      "type": "text"
-    },
-    "verbosity": "medium"
-  }
-}'
+name: AI Automation Agency
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  agency:
+    if: startsWith(github.event.comment.body, '@agency')
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get client command
+        id: command
+        env:
+          COMMENT: ${{ github.event.comment.body }}
+        run: |
+          echo "command<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$COMMENT" >> "$GITHUB_OUTPUT"
+          echo "EOF"
+
+      - name: Send request to OpenAI
+        id: ai
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CLIENT_COMMAND: ${{ steps.command.outputs.command }}
+        run: |
+          python - <<'PY'
+          import os
+          import json
+          import urllib.request
+
+          api_key = os.environ["OPENAI_API_KEY"]
+          command = os.environ["CLIENT_COMMAND"]
+
+          prompt = f"""
+          You are the AI Automation Agency manager.
+
+          Analyze this client request:
+
+          {command}
+
+          Create a professional automation plan.
+
+          Include:
+
+          1. Client Requirement
+          2. Business Goal
+          3. Automation Workflow
+          4. Tools Required
+          5. Step-by-Step Implementation
+          6. AI Components
+          7. Expected Result
+          8. Client Deliverables
+          9. Estimated Complexity
+          10. Next Action
+
+          Make the response practical and ready for an automation agency.
+          """
+
+          data = {
+              "model": "gpt-6-luna",
+              "input": prompt
+          }
+
+          request = urllib.request.Request(
+              "https://api.openai.com/v1/responses",
+              data=json.dumps(data).encode(),
+              headers={
+                  "Authorization": f"Bearer {api_key}",
+                  "Content-Type": "application/json"
+              },
+              method="POST"
+          )
+
+          with urllib.request.urlopen(request) as response:
+              result = json.loads(response.read().decode())
+
+          output = result.get("output_text", "")
+
+          if not output:
+              output = json.dumps(result, indent=2)
+
+          with open("agency_result.md", "w", encoding="utf-8") as f:
+              f.write("# AI Automation Agency Report\n\n")
+              f.write(output)
+
+          print(output)
+          PY
+
+      - name: Create deliverable
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          mkdir -p "deliverables/issue-${ISSUE_NUMBER}"
+          mv agency_result.md "deliverables/issue-${ISSUE_NUMBER}/agency-report.md"
+
+      - name: Commit agency deliverable
+        run: |
+          git config user.name "AI Automation Agency"
+          git config user.email "actions@github.com"
+
+          git add deliverables/
+
+          git diff --cached --quiet || git commit -m "Create AI agency deliverable"
+
+          git push
