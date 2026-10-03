@@ -14,68 +14,70 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
-       - name: Get client command
-        id: command
-        env:
-          COMMENT: ${{ github.event.comment.body }}
-        run: |
-          {
-            echo "command<<EOF"
-            echo "$COMMENT"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Send request to OpenAI
-        id: ai
+      - name: Generate AI Agency Plan
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          CLIENT_COMMAND: ${{ steps.command.outputs.command }}
+          CLIENT_REQUEST: ${{ github.event.comment.body }}
         run: |
-          python - <<'PY'
+          python3 - <<'PY'
           import os
           import json
           import urllib.request
+          import urllib.error
 
           api_key = os.environ["OPENAI_API_KEY"]
-          command = os.environ["CLIENT_COMMAND"]
+          client_request = os.environ["CLIENT_REQUEST"]
 
           prompt = f"""
-          You are the AI Automation Agency manager.
+          You are an AI Automation Agency Manager.
 
-          Analyze this client request:
+          A client submitted this request:
 
-          {command}
+          {client_request}
 
-          Create a professional automation plan.
+          Analyze the request and create a professional automation plan.
 
-          Include:
+          Return these sections:
 
-          1. Client Requirement
-          2. Business Goal
-          3. Automation Workflow
-          4. Tools Required
-          5. Step-by-Step Implementation
-          6. AI Components
-          7. Expected Result
-          8. Client Deliverables
-          9. Estimated Complexity
-          10. Next Action
+          # Client Requirement
+          Clearly explain what the client wants.
 
-          Make the response practical and ready for an automation agency.
+          # Business Goal
+          Explain the expected business outcome.
+
+          # Automation Workflow
+          Give the complete automation flow step by step.
+
+          # Tools Required
+          List suitable tools, APIs and platforms.
+
+          # AI Components
+          Explain where AI should be used.
+
+          # Implementation
+          Give practical implementation steps.
+
+          # Deliverables
+          List what the agency should deliver to the client.
+
+          # Client Response
+          Write a professional response that the agency can send to the client.
+
+          # Next Action
+          State the next action required.
           """
 
-          data = {
+          payload = {
               "model": "gpt-6-luna",
               "input": prompt
           }
 
           request = urllib.request.Request(
               "https://api.openai.com/v1/responses",
-              data=json.dumps(data).encode(),
+              data=json.dumps(payload).encode("utf-8"),
               headers={
                   "Authorization": f"Bearer {api_key}",
                   "Content-Type": "application/json"
@@ -83,35 +85,51 @@ jobs:
               method="POST"
           )
 
-          with urllib.request.urlopen(request) as response:
-              result = json.loads(response.read().decode())
+          try:
+              with urllib.request.urlopen(request) as response:
+                  data = json.loads(response.read().decode("utf-8"))
+          except urllib.error.HTTPError as e:
+              error_body = e.read().decode("utf-8")
+              print("OpenAI API Error:")
+              print(error_body)
+              raise
 
-          output = result.get("output_text", "")
+          output_text = data.get("output_text")
 
-          if not output:
-              output = json.dumps(result, indent=2)
+          if not output_text:
+              parts = []
 
-          with open("agency_result.md", "w", encoding="utf-8") as f:
-              f.write("# AI Automation Agency Report\n\n")
-              f.write(output)
+              for item in data.get("output", []):
+                  if item.get("type") == "message":
+                      for content in item.get("content", []):
+                          if content.get("type") == "output_text":
+                              parts.append(content.get("text", ""))
 
-          print(output)
+              output_text = "\n".join(parts)
+
+          if not output_text:
+              output_text = "AI returned no text output."
+
+          os.makedirs("deliverables", exist_ok=True)
+
+          with open(
+              "deliverables/agency-report.md",
+              "w",
+              encoding="utf-8"
+          ) as file:
+              file.write("# AI Automation Agency Report\n\n")
+              file.write(output_text)
+
+          print(output_text)
           PY
 
-      - name: Create deliverable
-        env:
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-        run: |
-          mkdir -p "deliverables/issue-${ISSUE_NUMBER}"
-          mv agency_result.md "deliverables/issue-${ISSUE_NUMBER}/agency-report.md"
-
-      - name: Commit agency deliverable
+      - name: Commit Agency Deliverable
         run: |
           git config user.name "AI Automation Agency"
           git config user.email "actions@github.com"
 
-          git add deliverables/
+          git add deliverables/agency-report.md
 
-          git diff --cached --quiet || git commit -m "Create AI agency deliverable"
+          git diff --cached --quiet || git commit -m "Generate AI agency report"
 
           git push
