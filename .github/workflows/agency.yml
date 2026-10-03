@@ -18,15 +18,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get client command
+       - name: Get client command
         id: command
         env:
           COMMENT: ${{ github.event.comment.body }}
         run: |
-          echo "command<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$COMMENT" >> "$GITHUB_OUTPUT"
-          echo "EOF"
-
+          {
+            echo "command<<EOF"
+            echo "$COMMENT"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
       - name: Send request to OpenAI
         id: ai
         env:
