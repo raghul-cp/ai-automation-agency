@@ -2,7 +2,8 @@ name: AI Automation Agency
 
 on:
   issue_comment:
-    types: [created]
+    types:
+      - created
 
 permissions:
   contents: write
@@ -10,29 +11,26 @@ permissions:
 
 jobs:
   agency:
-    if: ${{ startsWith(github.event.comment.body, '@agency') }}
+    if: startsWith(github.event.comment.body, '@agency')
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Generate AI Agency Plan
+      - name: Run AI Agency
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           CLIENT_REQUEST: ${{ github.event.comment.body }}
         run: |
-          python3 - <<'PY'
+          python3 <<'PY'
           import os
           import json
           import urllib.request
           import urllib.error
 
-          api_key = os.environ.get("OPENAI_API_KEY")
-          client_request = os.environ.get("CLIENT_REQUEST", "")
-
-          if not api_key:
-              raise RuntimeError("OPENAI_API_KEY secret is missing")
+          api_key = os.environ["OPENAI_API_KEY"]
+          client_request = os.environ["CLIENT_REQUEST"]
 
           prompt = f"""
           You are an AI Automation Agency Manager.
@@ -43,16 +41,15 @@ jobs:
           Create a professional automation plan.
 
           Include:
-
-          # Client Requirement
-          # Business Goal
-          # Automation Workflow
-          # Tools Required
-          # AI Components
-          # Implementation
-          # Deliverables
-          # Client Response
-          # Next Action
+          1. Client Requirement
+          2. Business Goal
+          3. Automation Workflow
+          4. Tools Required
+          5. AI Components
+          6. Implementation Steps
+          7. Deliverables
+          8. Client Response
+          9. Next Action
           """
 
           payload = {
@@ -72,28 +69,17 @@ jobs:
 
           try:
               with urllib.request.urlopen(request) as response:
-                  data = json.loads(response.read().decode("utf-8"))
-
-          except urllib.error.HTTPError as e:
-              print("OpenAI API Error:")
-              print(e.read().decode("utf-8"))
+                  result = json.loads(
+                      response.read().decode("utf-8")
+                  )
+          except urllib.error.HTTPError as error:
+              print(error.read().decode("utf-8"))
               raise
 
-          output_text = data.get("output_text", "")
+          output = result.get("output_text", "")
 
-          if not output_text:
-              parts = []
-
-              for item in data.get("output", []):
-                  if item.get("type") == "message":
-                      for content in item.get("content", []):
-                          if content.get("type") == "output_text":
-                              parts.append(content.get("text", ""))
-
-              output_text = "\n".join(parts)
-
-          if not output_text:
-              output_text = "AI returned no text output."
+          if not output:
+              output = "AI did not return a response."
 
           os.makedirs("deliverables", exist_ok=True)
 
@@ -103,21 +89,15 @@ jobs:
               encoding="utf-8"
           ) as file:
               file.write("# AI Automation Agency Report\n\n")
-              file.write(output_text)
+              file.write(output)
 
-          print(output_text)
+          print(output)
           PY
 
-      - name: Commit Agency Deliverable
+      - name: Save Result
         run: |
           git config user.name "AI Automation Agency"
           git config user.email "actions@github.com"
-
           git add deliverables/agency-report.md
-
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-          else
-            git commit -m "Generate AI agency report"
-            git push
-          fi
+          git commit -m "Generate agency report" || echo "Nothing to commit"
+          git push
