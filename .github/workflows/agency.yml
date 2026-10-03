@@ -2,8 +2,7 @@ name: AI Automation Agency
 
 on:
   issue_comment:
-    types:
-      - created
+    types: [created]
 
 permissions:
   contents: write
@@ -18,86 +17,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run AI Agency
+      - name: Create AI Report
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           CLIENT_REQUEST: ${{ github.event.comment.body }}
         run: |
-          python3 <<'PY'
-          import os
-          import json
-          import urllib.request
-          import urllib.error
+          python3 -c 'import json,os; json.dump({"model":"gpt-6-luna","input":"You are an AI Automation Agency Manager. Analyze this client request and create: Client Requirement, Business Goal, Automation Workflow, Tools Required, AI Components, Implementation Steps, Deliverables, Client Response and Next Action.\n\nClient request: "+os.environ["CLIENT_REQUEST"]},open("request.json","w"))'
 
-          api_key = os.environ["OPENAI_API_KEY"]
-          client_request = os.environ["CLIENT_REQUEST"]
+          curl -sS https://api.openai.com/v1/responses \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d @request.json \
+            -o response.json
 
-          prompt = f"""
-          You are an AI Automation Agency Manager.
+          python3 -c 'import json; d=json.load(open("response.json")); open("agency-report.md","w").write("# AI Automation Agency Report\n\n"+d.get("output_text","AI did not return text."))'
 
-          Client request:
-          {client_request}
+          mkdir -p deliverables
+          mv agency-report.md deliverables/agency-report.md
 
-          Create a professional automation plan.
-
-          Include:
-          1. Client Requirement
-          2. Business Goal
-          3. Automation Workflow
-          4. Tools Required
-          5. AI Components
-          6. Implementation Steps
-          7. Deliverables
-          8. Client Response
-          9. Next Action
-          """
-
-          payload = {
-              "model": "gpt-5.6",
-              "input": prompt
-          }
-
-          request = urllib.request.Request(
-              "https://api.openai.com/v1/responses",
-              data=json.dumps(payload).encode("utf-8"),
-              headers={
-                  "Authorization": "Bearer " + api_key,
-                  "Content-Type": "application/json"
-              },
-              method="POST"
-          )
-
-          try:
-              with urllib.request.urlopen(request) as response:
-                  result = json.loads(
-                      response.read().decode("utf-8")
-                  )
-          except urllib.error.HTTPError as error:
-              print(error.read().decode("utf-8"))
-              raise
-
-          output = result.get("output_text", "")
-
-          if not output:
-              output = "AI did not return a response."
-
-          os.makedirs("deliverables", exist_ok=True)
-
-          with open(
-              "deliverables/agency-report.md",
-              "w",
-              encoding="utf-8"
-          ) as file:
-              file.write("# AI Automation Agency Report\n\n")
-              file.write(output)
-
-          print(output)
-          PY
-
-      - name: Save Result
+      - name: Save Report
         run: |
           git config user.name "AI Automation Agency"
           git config user.email "actions@github.com"
           git add deliverables/agency-report.md
-          git commit -m "Generate agency report" || echo "Nothing to commit"
+          git commit -m "Generate agency report" || true
           git push
