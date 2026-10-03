@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   agency:
-    if: startsWith(github.event.comment.body, '@agency')
+    if: ${{ startsWith(github.event.comment.body, '@agency') }}
     runs-on: ubuntu-latest
 
     steps:
@@ -28,50 +28,35 @@ jobs:
           import urllib.request
           import urllib.error
 
-          api_key = os.environ["OPENAI_API_KEY"]
-          client_request = os.environ["CLIENT_REQUEST"]
+          api_key = os.environ.get("OPENAI_API_KEY")
+          client_request = os.environ.get("CLIENT_REQUEST", "")
+
+          if not api_key:
+              raise RuntimeError("OPENAI_API_KEY secret is missing")
 
           prompt = f"""
           You are an AI Automation Agency Manager.
 
-          A client submitted this request:
-
+          Client request:
           {client_request}
 
-          Analyze the request and create a professional automation plan.
+          Create a professional automation plan.
 
-          Return these sections:
+          Include:
 
           # Client Requirement
-          Clearly explain what the client wants.
-
           # Business Goal
-          Explain the expected business outcome.
-
           # Automation Workflow
-          Give the complete automation flow step by step.
-
           # Tools Required
-          List suitable tools, APIs and platforms.
-
           # AI Components
-          Explain where AI should be used.
-
           # Implementation
-          Give practical implementation steps.
-
           # Deliverables
-          List what the agency should deliver to the client.
-
           # Client Response
-          Write a professional response that the agency can send to the client.
-
           # Next Action
-          State the next action required.
           """
 
           payload = {
-              "model": "gpt-6-luna",
+              "model": "gpt-5.6",
               "input": prompt
           }
 
@@ -79,7 +64,7 @@ jobs:
               "https://api.openai.com/v1/responses",
               data=json.dumps(payload).encode("utf-8"),
               headers={
-                  "Authorization": f"Bearer {api_key}",
+                  "Authorization": "Bearer " + api_key,
                   "Content-Type": "application/json"
               },
               method="POST"
@@ -88,13 +73,13 @@ jobs:
           try:
               with urllib.request.urlopen(request) as response:
                   data = json.loads(response.read().decode("utf-8"))
+
           except urllib.error.HTTPError as e:
-              error_body = e.read().decode("utf-8")
               print("OpenAI API Error:")
-              print(error_body)
+              print(e.read().decode("utf-8"))
               raise
 
-          output_text = data.get("output_text")
+          output_text = data.get("output_text", "")
 
           if not output_text:
               parts = []
@@ -130,6 +115,9 @@ jobs:
 
           git add deliverables/agency-report.md
 
-          git diff --cached --quiet || git commit -m "Generate AI agency report"
-
-          git push
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Generate AI agency report"
+            git push
+          fi
