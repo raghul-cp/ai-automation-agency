@@ -28,6 +28,7 @@ jobs:
             echo "$COMMENT"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
+
       - name: Send request to OpenAI
         id: ai
         env:
