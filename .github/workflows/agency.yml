@@ -63,4 +63,4 @@ jobs:
 
           git commit -m "Generate AI agency report" || echo "Nothing to commit"
 
-          git push
+           git push
